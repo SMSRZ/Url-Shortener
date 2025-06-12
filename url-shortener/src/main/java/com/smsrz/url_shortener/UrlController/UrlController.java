@@ -7,6 +7,7 @@ import com.smsrz.url_shortener.Model.CreateShortUrlCmd;
 import com.smsrz.url_shortener.Model.ShortUrlDTO;
 import com.smsrz.url_shortener.Service.ShortUrlService;
 import com.smsrz.url_shortener.UrlController.DTOs.CreateShortUrlForm;
+import com.smsrz.url_shortener.UserEntity.Users;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.Banner;
@@ -25,14 +26,20 @@ import java.util.Optional;
 @Controller
 public class UrlController {
 
-    @Autowired
-    private ShortUrlService service;
 
-    @Autowired
-    private ApplicationProperties properties;
+    private final ShortUrlService service;
+    private final SecurityUtils utils;
+    private final ApplicationProperties properties;
+
+    public UrlController(ShortUrlService service, SecurityUtils utils, ApplicationProperties properties) {
+        this.service = service;
+        this.utils = utils;
+        this.properties = properties;
+    }
 
     @GetMapping("/home")
     public String home(Model model){
+        Users currentuser = utils.getCurrentUser();
         List<ShortUrlDTO> urls = service.findPublicShortUrls();
         model.addAttribute("shortUrls",urls);
         model.addAttribute("baseUrl",properties.baseurl());
@@ -69,5 +76,9 @@ public class UrlController {
        }
        ShortUrlDTO shortUrlDTO = shortUrlDTOOptional.get();
        return "redirect:"+shortUrlDTO.originalUrl();
+    }
+    @GetMapping("/login")
+    public String login(){
+        return "login";
     }
 }
