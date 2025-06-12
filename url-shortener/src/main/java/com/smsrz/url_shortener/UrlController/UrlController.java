@@ -2,6 +2,7 @@ package com.smsrz.url_shortener.UrlController;
 
 
 import com.smsrz.url_shortener.ApplicationProperties;
+import com.smsrz.url_shortener.Exceptions.ShortUrlNotFoundException;
 import com.smsrz.url_shortener.Model.CreateShortUrlCmd;
 import com.smsrz.url_shortener.Model.ShortUrlDTO;
 import com.smsrz.url_shortener.Service.ShortUrlService;
@@ -14,10 +15,12 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 public class UrlController {
@@ -51,11 +54,20 @@ public class UrlController {
         try {
             CreateShortUrlCmd cmd = new CreateShortUrlCmd(form.originalUrl());
             var shortUrlDto = service.createShortUrl(cmd);
-            attributes.addFlashAttribute("successMessage", properties.baseurl()+shortUrlDto.shortKey());
+            attributes.addFlashAttribute("successMessage", properties.baseurl()+"/s/"+shortUrlDto.shortKey());
         } catch (Exception e) {
             attributes.addFlashAttribute("errorMessage","Unable to create Short url");
         }
 
         return "redirect:/home";
+    }
+    @GetMapping("/s/{shortKey}")
+    public String redirectToOriginalUrl(@PathVariable String shortKey){
+       Optional<ShortUrlDTO> shortUrlDTOOptional =  service.accessShortUrl(shortKey);
+       if(shortUrlDTOOptional.isEmpty()){
+           throw new ShortUrlNotFoundException("Invalid Short Key"+shortKey);
+       }
+       ShortUrlDTO shortUrlDTO = shortUrlDTOOptional.get();
+       return "redirect:"+shortUrlDTO.originalUrl();
     }
 }
