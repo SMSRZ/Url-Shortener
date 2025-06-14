@@ -4,6 +4,7 @@ package com.smsrz.url_shortener.UrlController;
 import com.smsrz.url_shortener.ApplicationProperties;
 import com.smsrz.url_shortener.Exceptions.ShortUrlNotFoundException;
 import com.smsrz.url_shortener.Model.CreateShortUrlCmd;
+import com.smsrz.url_shortener.Model.PagedResult;
 import com.smsrz.url_shortener.Model.ShortUrlDTO;
 import com.smsrz.url_shortener.Service.ShortUrlService;
 import com.smsrz.url_shortener.UrlController.DTOs.CreateShortUrlForm;
@@ -11,13 +12,11 @@ import com.smsrz.url_shortener.UserEntity.Users;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.Banner;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
@@ -36,13 +35,21 @@ public class UrlController {
         this.utils = utils;
         this.properties = properties;
     }
-
-    @GetMapping("/home")
-    public String home(Model model){
-//        Users currentuser = utils.getCurrentUser();
-        List<ShortUrlDTO> urls = service.findPublicShortUrls();
+    private void addShortUrlDataToModel(Model model,int pageNo){
+        PagedResult<ShortUrlDTO> urls = service.findPublicShortUrls(pageNo, properties.pagezSize());
         model.addAttribute("shortUrls",urls);
         model.addAttribute("baseUrl",properties.baseurl());
+    }
+    //if the request contains GET/home?page=0&size=10&sort="createdAt",Desc  then spring data jpa will automatically convert the fields to a pageable object
+    //but this is diectly coupling the web layer with persistence provider spiringdatajpa in this case so what would happen if i change the jpa provider
+    @GetMapping("/home")
+    public String home(
+            @RequestParam(defaultValue = "1") int page,
+//            Pageable pageable,
+            Model model){
+
+//        Users currentuser = utils.getCurrentUser();
+        this.addShortUrlDataToModel(model,page);
         model.addAttribute("createShortUrlForm",new CreateShortUrlForm("",false,null));
         return "index";//thymeleaf doesnt include .extensions
     }
@@ -52,10 +59,8 @@ public class UrlController {
                            RedirectAttributes attributes,
                            Model model){
         if (result.hasErrors()){
-            List<ShortUrlDTO> urls = service.findPublicShortUrls();
-            model.addAttribute("shortUrls",urls);
-            model.addAttribute("baseUrl",properties.baseurl());
-            return "index";
+            this.addShortUrlDataToModel(model,1);
+             return "index";
         }
         //TODO implement logic
         try {

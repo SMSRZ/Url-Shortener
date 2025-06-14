@@ -15,6 +15,7 @@
     <div class="jumbotron bg-light p-5 rounded-3 my-4">
         <p class="lead">A simple URL shortener service. Create short, easy-to-share links.</p>
     </div>
+
     <div class="card mt-4">
         <div class="card-header">
             <h5 class="card-title mb-0">Create a Short URL</h5>
@@ -31,27 +32,29 @@
                          th:if="${#fields.hasErrors('originalUrl')}"
                          th:errors="*{originalUrl}"></div>
                 </div>
+
                 <div class="mb-3" sec:authorize="isAuthenticated()">
                     <label for="expirationInDays" class="form-label">Expiration (days)</label>
                     <input type="number" class="form-control" id="expirationInDays"
                            th:field="*{expirationInDays}"
-                           min="1" max="365">
+                           min="1" max="30">
                     <div class="form-text">Leave empty to never expire</div>
                 </div>
                 <div class="mb-3 form-check" sec:authorize="isAuthenticated()">
                     <input type="checkbox" class="form-check-input" id="isPrivate" th:field="*{isPrivate}">
                     <label class="form-check-label" for="isPrivate">Private (only you can access)</label>
                 </div>
+
                 <button type="submit" class="btn btn-primary">Shorten URL</button>
             </form>
         </div>
     </div>
 
     <h2 class="mt-5">Public Shortened URLs</h2>
-    <div th:if="${shortUrls.isEmpty()}" class="alert alert-info">
+    <div th:if="${shortUrls.data.isEmpty()}" class="alert alert-info">
         No public URLs have been created yet.
     </div>
-    <div th:unless="${shortUrls.isEmpty()}" class="table-responsive">
+    <div th:unless="${shortUrls.data.isEmpty()}" class="table-responsive">
         <table class="table table-striped table-hover">
             <thead>
             <tr>
@@ -63,7 +66,7 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="url : ${shortUrls}">
+            <tr th:each="url : ${shortUrls.data}">
                 <td>
                     <a th:href="@{/s/{key}(key=${url.shortKey})}" th:text="${baseUrl + '/s/' + url.shortKey}" target="_blank"></a>
                 </td>
@@ -76,6 +79,9 @@
             </tr>
             </tbody>
         </table>
+
+        <div th:insert="~{pagination}"></div>
+
     </div>
 </div>
 </body>

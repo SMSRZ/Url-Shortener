@@ -3,9 +3,14 @@ package com.smsrz.url_shortener.Service;
 
 import com.smsrz.url_shortener.ApplicationProperties;
 import com.smsrz.url_shortener.Model.CreateShortUrlCmd;
+import com.smsrz.url_shortener.Model.PagedResult;
 import com.smsrz.url_shortener.Model.ShortUrlDTO;
 import com.smsrz.url_shortener.Repository.ShortUrlRepo;
 import com.smsrz.url_shortener.UserEntity.ShortUrl;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +39,11 @@ public class ShortUrlService {
         this.properties = properties;
     }
 
-    public List<ShortUrlDTO> findPublicShortUrls() {
-        return repo.findPublicShortUrls().stream().map(entityMapper::toShortUrlDTO).toList();
+    public PagedResult<ShortUrlDTO> findPublicShortUrls(int pageNo,int pageSize) {
+        pageNo=pageNo>1 ? pageNo-1 : 0;
+        Pageable pageable = PageRequest.of(pageNo,pageSize, Sort.by(Sort.Direction.DESC,"createdAt"));
+        Page<ShortUrlDTO> shortUrlDTOPage = repo.findPublicShortUrls(pageable).map(entityMapper::toShortUrlDTO);
+        return PagedResult.from(shortUrlDTOPage);
     }
 @Transactional
     public ShortUrlDTO createShortUrl(CreateShortUrlCmd cmd){

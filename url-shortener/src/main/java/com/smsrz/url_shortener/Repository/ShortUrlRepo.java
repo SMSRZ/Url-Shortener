@@ -1,6 +1,8 @@
 package com.smsrz.url_shortener.Repository;
 
 import com.smsrz.url_shortener.UserEntity.ShortUrl;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,8 +13,8 @@ import java.util.Optional;
 
 @Repository
 public interface ShortUrlRepo extends JpaRepository<ShortUrl,Long> {
-    @Query("select su from ShortUrl su left join fetch su.createdBy where su.isPrivate = false order by su.createdAt desc")
-    List<ShortUrl> findPublicShortUrls();
+    @Query("select su from ShortUrl su left join fetch su.createdBy where su.isPrivate = false")
+    Page<ShortUrl> findPublicShortUrls(Pageable pageable);
 
     boolean existsByShortKey(String shortKey);
 
