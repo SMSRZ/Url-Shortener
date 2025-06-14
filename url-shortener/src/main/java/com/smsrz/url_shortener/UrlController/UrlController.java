@@ -39,11 +39,11 @@ public class UrlController {
 
     @GetMapping("/home")
     public String home(Model model){
-        Users currentuser = utils.getCurrentUser();
+//        Users currentuser = utils.getCurrentUser();
         List<ShortUrlDTO> urls = service.findPublicShortUrls();
         model.addAttribute("shortUrls",urls);
         model.addAttribute("baseUrl",properties.baseurl());
-        model.addAttribute("createShortUrlForm",new CreateShortUrlForm(""));
+        model.addAttribute("createShortUrlForm",new CreateShortUrlForm("",false,null));
         return "index";//thymeleaf doesnt include .extensions
     }
     @PostMapping("/short-urls")
@@ -59,9 +59,10 @@ public class UrlController {
         }
         //TODO implement logic
         try {
-            CreateShortUrlCmd cmd = new CreateShortUrlCmd(form.originalUrl());
+            Long userId = utils.getCurrentUserId();
+            CreateShortUrlCmd cmd = new CreateShortUrlCmd(form.originalUrl(),form.isPrivate(),form.expirationInDays(),userId);
             var shortUrlDto = service.createShortUrl(cmd);
-            attributes.addFlashAttribute("successMessage", properties.baseurl()+"/s/"+shortUrlDto.shortKey());
+            attributes.addFlashAttribute("successMessage", properties.baseurl()+"s/"+shortUrlDto.shortKey());
         } catch (Exception e) {
             attributes.addFlashAttribute("errorMessage","Unable to create Short url");
         }
@@ -70,7 +71,8 @@ public class UrlController {
     }
     @GetMapping("/s/{shortKey}")
     public String redirectToOriginalUrl(@PathVariable String shortKey){
-       Optional<ShortUrlDTO> shortUrlDTOOptional =  service.accessShortUrl(shortKey);
+        long userId = utils.getCurrentUserId();
+       Optional<ShortUrlDTO> shortUrlDTOOptional =  service.accessShortUrl(shortKey,userId);
        if(shortUrlDTOOptional.isEmpty()){
            throw new ShortUrlNotFoundException("Invalid Short Key"+shortKey);
        }

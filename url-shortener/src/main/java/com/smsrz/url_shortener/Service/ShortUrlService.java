@@ -13,6 +13,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 
@@ -48,11 +49,18 @@ public class ShortUrlService {
         var url =  new ShortUrl();
         url.setOriginalUrl(cmd.originalUrl());
         url.setShortKey(shortkey);
-        url.setCreatedBy(null);
+        if (cmd.userId()==null){
+            url.setCreatedBy(null);
+            url.setIsPrivate(false);
+            url.setExpiresAt(Instant.now().plus(properties.defaultExpiryDays(), ChronoUnit.DAYS));
+        }else {
+            url.setCreatedBy(repo.findById(cmd.userId()).orElseThrow().getCreatedBy());
+            url.setIsPrivate(cmd.isPrivate() != null && cmd.isPrivate());
+            url.setExpiresAt(cmd.expirationInDays()!=null?Instant.now().plus(cmd.expirationInDays(), ChronoUnit.DAYS):null);
+        }
         url.setClickCount(1L);
         url.setCreatedAt(Instant.now());
-        url.setIsPrivate(false);
-        url.setExpiresAt(Instant.now().plus(properties.defaultExpiryDays(), ChronoUnit.DAYS));
+
         repo.save(url);
         return entityMapper.toShortUrlDTO(url);
     }
@@ -76,13 +84,16 @@ public class ShortUrlService {
         return sb.toString();
     }
     @Transactional
-    public Optional<ShortUrlDTO> accessShortUrl(String shortKey) {
+    public Optional<ShortUrlDTO> accessShortUrl(String shortKey,Long userId) {
         Optional<ShortUrl> shortUrlOptional = repo.findByShortKey(shortKey);
         if(shortUrlOptional.isEmpty()){
             return Optional.empty();
         }
         ShortUrl shortUrl = shortUrlOptional.get();
         if (shortUrl.getExpiresAt()!=null&&shortUrl.getExpiresAt().isBefore(Instant.now())){
+            return Optional.empty();
+        }
+        if (shortUrl.getIsPrivate()!=null && shortUrl.getCreatedBy()!=null && !Objects.equals(shortUrl.getCreatedBy().getId(), userId)){
             return Optional.empty();
         }
         shortUrl.setClickCount(shortUrl.getClickCount()+1);
