@@ -11,8 +11,8 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public record ApplicationProperties(
         @NotBlank
-        @DefaultValue("http://locahost:8080")
-        String baseurl,
+        @DefaultValue("http://localhost:8080")
+        String baseUrl,
         @DefaultValue("30")
         @Min(1)
         @Max(30)
@@ -20,6 +20,6 @@ public record ApplicationProperties(
         @DefaultValue("true")
         Boolean validateOriginalUrl,
         @DefaultValue("10")
-        int pagezSize
+        int pageSize
 ) {
 }

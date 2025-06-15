@@ -6,6 +6,7 @@ import com.smsrz.url_shortener.Model.CreateShortUrlCmd;
 import com.smsrz.url_shortener.Model.PagedResult;
 import com.smsrz.url_shortener.Model.ShortUrlDTO;
 import com.smsrz.url_shortener.Repository.ShortUrlRepo;
+import com.smsrz.url_shortener.Repository.UserRepo;
 import com.smsrz.url_shortener.UserEntity.ShortUrl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,20 +31,29 @@ public class ShortUrlService {
     private final ShortUrlRepo repo;
 
     private final EntityMapper entityMapper;
-
+private final UserRepo userRepo;
     private final ApplicationProperties properties;
 
-    public ShortUrlService(ShortUrlRepo repo, EntityMapper entityMapper, ApplicationProperties properties) {
+    public ShortUrlService(ShortUrlRepo repo, EntityMapper entityMapper, UserRepo userRepo, ApplicationProperties properties) {
         this.repo = repo;
         this.entityMapper = entityMapper;
+        this.userRepo = userRepo;
         this.properties = properties;
     }
-
-    public PagedResult<ShortUrlDTO> findPublicShortUrls(int pageNo,int pageSize) {
+    private Pageable getPageable(int pageNo,int pageSize){
         pageNo=pageNo>1 ? pageNo-1 : 0;
         Pageable pageable = PageRequest.of(pageNo,pageSize, Sort.by(Sort.Direction.DESC,"createdAt"));
+        return pageable;
+    }
+    public PagedResult<ShortUrlDTO> findPublicShortUrls(int pageNo,int pageSize) {
+        Pageable pageable = getPageable(pageNo,pageSize);
         Page<ShortUrlDTO> shortUrlDTOPage = repo.findPublicShortUrls(pageable).map(entityMapper::toShortUrlDTO);
         return PagedResult.from(shortUrlDTOPage);
+    }
+    public PagedResult<ShortUrlDTO> findUserShortUrls(int pageNo,Long userId,int pageSize){
+        Pageable pageable = getPageable(pageNo,pageSize);
+        var userShortUrls = repo.findByCreatedById(userId,pageable).map(entityMapper::toShortUrlDTO);
+        return PagedResult.from(userShortUrls);
     }
 @Transactional
     public ShortUrlDTO createShortUrl(CreateShortUrlCmd cmd){
@@ -53,7 +63,7 @@ public class ShortUrlService {
                 throw new RuntimeException("Invalid Url");
             }
         }
-        var shortkey = generateRandomShortKey();
+        var shortkey = generateUniqueShortkey();
         var url =  new ShortUrl();
         url.setOriginalUrl(cmd.originalUrl());
         url.setShortKey(shortkey);
@@ -62,7 +72,7 @@ public class ShortUrlService {
             url.setIsPrivate(false);
             url.setExpiresAt(Instant.now().plus(properties.defaultExpiryDays(), ChronoUnit.DAYS));
         }else {
-            url.setCreatedBy(repo.findById(cmd.userId()).orElseThrow().getCreatedBy());
+            url.setCreatedBy(userRepo.findById(cmd.userId()).orElseThrow());
             url.setIsPrivate(cmd.isPrivate() != null && cmd.isPrivate());
             url.setExpiresAt(cmd.expirationInDays()!=null?Instant.now().plus(cmd.expirationInDays(), ChronoUnit.DAYS):null);
         }
@@ -72,6 +82,39 @@ public class ShortUrlService {
         repo.save(url);
         return entityMapper.toShortUrlDTO(url);
     }
+
+    @Transactional
+    public Optional<ShortUrlDTO> accessShortUrl(String shortKey,Long userId) {
+        Optional<ShortUrl> shortUrlOptional = repo.findByShortKey(shortKey);
+        if(shortUrlOptional.isEmpty()) {
+            return Optional.empty();
+        }
+        ShortUrl shortUrl = shortUrlOptional.get();
+        if(shortUrl.getExpiresAt() != null && shortUrl.getExpiresAt().isBefore(Instant.now())) {
+            return Optional.empty();
+        }
+        if(shortUrl.getIsPrivate() != null && shortUrl.getCreatedBy() != null
+                && !Objects.equals(shortUrl.getCreatedBy().getId(), userId)) {
+            return Optional.empty();
+        }
+        shortUrl.setClickCount(shortUrl.getClickCount()+1);
+        repo.save(shortUrl);
+        return shortUrlOptional.map(entityMapper::toShortUrlDTO);
+    }
+
+    public void deleteUserId(List<Long> ids, Long userId) {
+        if (ids!=null && userId!=null && !ids.isEmpty()){
+            repo.deleteByIdInAndCreatedById(ids,userId);
+        }
+    }
+
+    public PagedResult<ShortUrlDTO> findAllShortUrls(int pageNo, int pageSize) {
+        Pageable pageable = getPageable(pageNo,pageSize);
+        Page<ShortUrlDTO> shortUrlDTOPage = repo.findAllShortUrls(pageable).map(entityMapper::toShortUrlDTO);
+        return PagedResult.from(shortUrlDTOPage);
+    }
+
+
     public String generateUniqueShortkey(){
         String shortKey;
         do {
@@ -90,22 +133,5 @@ public class ShortUrlService {
             sb.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
         }
         return sb.toString();
-    }
-    @Transactional
-    public Optional<ShortUrlDTO> accessShortUrl(String shortKey,Long userId) {
-        Optional<ShortUrl> shortUrlOptional = repo.findByShortKey(shortKey);
-        if(shortUrlOptional.isEmpty()){
-            return Optional.empty();
-        }
-        ShortUrl shortUrl = shortUrlOptional.get();
-        if (shortUrl.getExpiresAt()!=null&&shortUrl.getExpiresAt().isBefore(Instant.now())){
-            return Optional.empty();
-        }
-        if (shortUrl.getIsPrivate()!=null && shortUrl.getCreatedBy()!=null && !Objects.equals(shortUrl.getCreatedBy().getId(), userId)){
-            return Optional.empty();
-        }
-        shortUrl.setClickCount(shortUrl.getClickCount()+1);
-        repo.save(shortUrl);
-        return shortUrlOptional.map(entityMapper::toShortUrlDTO);
     }
 }
