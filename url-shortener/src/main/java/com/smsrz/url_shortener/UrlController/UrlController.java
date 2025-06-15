@@ -113,8 +113,8 @@ public class UrlController {
             return "redirect:/my-urls";
         }
         try{
-            Long userId = utils.getCurrentUserId();
-            service.deleteUserId(ids,userId);
+            Users user = utils.getCurrentUser();
+            service.deleteUserId(ids,user);
             attributes.addFlashAttribute("successMessage","The selected Urls have been deleted Successfully");
 
         }catch (Exception e){

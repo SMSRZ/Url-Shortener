@@ -1,6 +1,7 @@
 package com.smsrz.url_shortener.Repository;
 
 import com.smsrz.url_shortener.UserEntity.ShortUrl;
+import com.smsrz.url_shortener.UserEntity.Users;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,7 +24,8 @@ public interface ShortUrlRepo extends JpaRepository<ShortUrl,Long> {
     Optional<ShortUrl> findByShortKey(String shortKey);
 
     @Modifying
-    void deleteByIdInAndCreatedById(List<Long> ids, Long userId);
+    @Query("DELETE FROM ShortUrl s WHERE s.id IN :ids AND s.createdBy = :user")
+    void deleteByIdInAndCreatedBy(List<Long> ids, Users user);
 
     @Query("select u from ShortUrl u left join fetch u.createdBy")
     Page<ShortUrl> findAllShortUrls(Pageable pageable);

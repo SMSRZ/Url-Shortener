@@ -8,6 +8,7 @@ import com.smsrz.url_shortener.Model.ShortUrlDTO;
 import com.smsrz.url_shortener.Repository.ShortUrlRepo;
 import com.smsrz.url_shortener.Repository.UserRepo;
 import com.smsrz.url_shortener.UserEntity.ShortUrl;
+import com.smsrz.url_shortener.UserEntity.Users;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +32,7 @@ public class ShortUrlService {
     private final ShortUrlRepo repo;
 
     private final EntityMapper entityMapper;
-private final UserRepo userRepo;
+    private final UserRepo userRepo;
     private final ApplicationProperties properties;
 
     public ShortUrlService(ShortUrlRepo repo, EntityMapper entityMapper, UserRepo userRepo, ApplicationProperties properties) {
@@ -101,10 +102,10 @@ private final UserRepo userRepo;
         repo.save(shortUrl);
         return shortUrlOptional.map(entityMapper::toShortUrlDTO);
     }
-
-    public void deleteUserId(List<Long> ids, Long userId) {
-        if (ids!=null && userId!=null && !ids.isEmpty()){
-            repo.deleteByIdInAndCreatedById(ids,userId);
+    @Transactional
+    public void deleteUserId(List<Long> ids, Users user) {
+        if (ids!=null && user!=null && !ids.isEmpty()){
+            repo.deleteByIdInAndCreatedBy(ids,user);
         }
     }
 
